@@ -81,40 +81,40 @@ def main_reading(status):
     csvfile = "local_{0} {1}.csv".format(date,hour)
 
     while True:
-        with open(csvfile, 'w') as file:
-            while count < 100:
+        with open(csvfile, 'a') as file:
+            #while count < 100:
 
-                count += 1
-                temp1 = t1.readTempC()
-                temp2 = t2.readTempC()
-                temp3 = t3.readTempC()
+            #count += 1
+            temp1 = t1.readTempC()
+            temp2 = t2.readTempC()
+            temp3 = t3.readTempC()
 
-                global data
-                data = "{},{},{},".format(temp1, temp2, temp3)
+            global data
+            data = "{},{},{},".format(temp1, temp2, temp3)
 
-                acc = mpu.get_accel_data()
-                acx = acc['x']
-                acy = acc['y']
-                acz = acc['z']
-                temp = mpu.get_temp()
-                    
-                data += "{},{},{},{},".format(acx, acy, acz, temp)
+            acc = mpu.get_accel_data()
+            acx = acc['x']
+            acy = acc['y']
+            acz = acc['z']
+            temp = mpu.get_temp()
+                
+            data += "{},{},{},{},".format(acx, acy, acz, temp)
 
-                mcp_values = [0] * 8
-                for i in range(5, 8):
-                    mcp_values[i] = mcp.read_adc(i)
-                            
-                data += "{},{},{}".format(mcp_values[5], mcp_values[6], mcp_values[7])	
-           
-                print(data)
-                file.write(data + "\n")
+            mcp_values = [0] * 8
+            for i in range(5, 8):
+                mcp_values[i] = mcp.read_adc(i)
+                        
+            data += "{},{},{}".format(mcp_values[5], mcp_values[6], mcp_values[7])	
+       
+            print(data)
+            file.write(data + "\n")
 
-                global complete_data
-                complete_data = data
+            global complete_data
+            complete_data = data
 
-                time.sleep(0.100)
+            time.sleep(0.100)
 
-        count = 0
+        #count = 0
 
 
 def thread_reading(conn):
