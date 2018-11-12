@@ -22,8 +22,7 @@ except:
     print(str(e))
 
 s.listen(5)
-print("Waiting for connection.")
-
+print("Socket created.")
 
 # FILENAME DATA
 date, timer = str(datetime.now()).split(" ")
@@ -75,30 +74,47 @@ complete_data = ""
 def main_reading(status):
     #main reading for global variables
 
+    count = 0
+    date, timer = str(datetime.now()).split(" ")
+    hour, milli = timer.split(".")
+  
+    csvfile = "local_{0} {1}.csv".format(date,hour)
+
     while True:
+        with open(csvfile, 'w') as file:
+            while count < 100:
 
-        temp1 = t1.readTempC()
-        temp2 = t2.readTempC()
-        temp3 = t3.readTempC()
+                count += 1
+                temp1 = t1.readTempC()
+                temp2 = t2.readTempC()
+                temp3 = t3.readTempC()
 
-        global data = "{},{},{},".format(temp1, temp2, temp3)
+                global data
+                data = "{},{},{},".format(temp1, temp2, temp3)
 
-        acc = mpu.get_accel_data()
-        acx = acc['x']
-        acy = acc['y']
-        acz = acc['z']
-        temp = mpu.get_temp()
-		
-        data += "{},{},{},{},".format(acx, acy, acz, temp)
+                acc = mpu.get_accel_data()
+                acx = acc['x']
+                acy = acc['y']
+                acz = acc['z']
+                temp = mpu.get_temp()
+                    
+                data += "{},{},{},{},".format(acx, acy, acz, temp)
 
-        mcp_values = [0] * 8
-        for i in range(5, 8):
-            mcp_values[i] = mcp.read_adc(i)
-			
-        data += "{},{},{}".format(mcp_values[5], mcp_values[6], mcp_values[7])	
-        global complete_data = data
+                mcp_values = [0] * 8
+                for i in range(5, 8):
+                    mcp_values[i] = mcp.read_adc(i)
+                            
+                data += "{},{},{}".format(mcp_values[5], mcp_values[6], mcp_values[7])	
+           
+                print(data)
+                file.write(data + "\n")
 
-        time.sleep(0.050)
+                global complete_data
+                complete_data = data
+
+                time.sleep(0.100)
+
+        count = 0
 
 
 def thread_reading(conn):
@@ -106,7 +122,7 @@ def thread_reading(conn):
     date, timer = str(datetime.now()).split(" ")
     hour, milli = timer.split(".")
   
-    csvfile = "{0} {1}.csv".format(date,hour)
+    csvfile = "remote_{0} {1}.csv".format(date,hour)
 
     with open(csvfile, 'w') as file:
 
@@ -114,28 +130,27 @@ def thread_reading(conn):
         
             client_data = conn.recv(1024)
 
-            print(complete_data)
-	    file.write(str(complete_data) + "\n")
+            print("Sending: " + complete_data)
+            file.write(str(complete_data) + "\n")
 
             if not client_data:
                 break
 
             conn.send(complete_data)
-	    data = " "
-	    time.sleep(.100)	
-
+            data = " "
+            time.sleep(.100)	
 
     conn.close()
 
 
 start_new_thread(main_reading, ("start",))
-print("Main reading started")
+print("Main thread started.")
 time.sleep(1)
 
 while True:
+    print("Waiting for a new connection.")
     conn, addr = s.accept()
-    print(f"Connected to {addr[0]}:{addr[1]}.")
+    print("Connected to {}:{}.".format(addr[0], addr[1]))
 
     start_new_thread(thread_reading, (conn,))
-
 
