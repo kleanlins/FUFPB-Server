@@ -10,6 +10,9 @@ import time
 import socket
 from datetime import datetime
 
+
+termo_time = time.clock()
+
 # CONNECTION DATA
 host = ''
 port = 5555
@@ -42,7 +45,8 @@ lcd_c = 16
 lcd_r = 2
 
 lcd = LCD.Adafruit_CharLCD(lcd_rs, lcd_en, lcd_d4, lcd_d5, lcd_d6, lcd_d7, lcd_c, lcd_r, lcd_bl)
-lcd.message("Hello\neveryone.")
+#lcd.message("Hello\neveryone.")
+lcd.clear()
 time.sleep(2.0)
 
 csvfile = "{0} {1}.csv".format(date,hour)
@@ -71,6 +75,8 @@ mpu = mpu6050(0x68)
 data = ""
 complete_data = ""
 
+
+
 def main_reading(status):
     #main reading for global variables
 
@@ -80,23 +86,51 @@ def main_reading(status):
   
     csvfile = "local_{0} {1}.csv".format(date,hour)
 
+    temp1 = t1.readTempC()
+    temp2 = t2.readTempC()
+    temp3 = t3.readTempC()
+    old_temp = "{},{},{},".format(temp1, temp2, temp3)
+
+    acx = ""
+    acy = ""
+    acz = ""
+
     while True:
         with open(csvfile, 'a') as file:
             #while count < 100:
 
             #count += 1
-            temp1 = t1.readTempC()
-            temp2 = t2.readTempC()
-            temp3 = t3.readTempC()
 
             global data
-            data = "{},{},{},".format(temp1, temp2, temp3)
+            global termo_time
 
-            acc = mpu.get_accel_data()
-            acx = acc['x']
-            acy = acc['y']
-            acz = acc['z']
-            temp = mpu.get_temp()
+            if((time.clock() - termo_time) > 5):
+                temp1 = t1.readTempC()
+                temp2 = t2.readTempC()
+                temp3 = t3.readTempC()
+                data = "{},{},{},".format(temp1, temp2, temp3)
+
+                old_temp = data
+                termo_time = time.clock()
+            else:
+                data = old_temp
+
+            try:
+                acc = mpu.get_accel_data()
+                acx = acc['x']
+                acy = acc['y']
+                acz = acc['z']
+                temp = mpu.get_temp()
+            except:
+                print("Restarting MCP")
+
+                mpu = mpu6050(0x68)
+                acc = mpu.get_accel_data()
+                acx = acc['x']
+                acy = acc['y']
+                acz = acc['z']
+                temp = mpu.get_temp()
+
                 
             data += "{},{},{},{},".format(acx, acy, acz, temp)
 
@@ -105,14 +139,34 @@ def main_reading(status):
                 mcp_values[i] = mcp.read_adc(i)
                         
             data += "{},{},{}".format(mcp_values[5], mcp_values[6], mcp_values[7])	
-       
+            #dianteiro, traseiro, esterçamento
+
             print(data)
             file.write(data + "\n")
+
+            xf = float(acx)
+            acx = int(xf)
+
+            yf = float(acy)
+            acy = int(yf)
+
+            tf = float(temp)
+            temp = int(tf)
+            
+            entf = float(temp1)
+            temp1 = int(entf)
+
+            saidf = float(temp2)
+            temp2 = int(saidf)
+
+            lcd_text = "E:{} T:{} X:{}\nS:{}      Y:{}".format(temp1, temp, acx, temp2, acy)
+            lcd.message(str(lcd_text))
 
             global complete_data
             complete_data = data
 
             time.sleep(0.100)
+            lcd.clear()
 
         #count = 0
 
@@ -130,21 +184,22 @@ def thread_reading(conn):
         
             client_data = conn.recv(1024)
 
-            print("Sending: " + complete_data)
+            # print("Sending: " + complete_data)
             file.write(str(complete_data) + "\n")
 
             if not client_data:
                 break
 
-            conn.send(complete_data)
+            conn.send(complete_data.encode())
             data = " "
             time.sleep(.100)	
 
     conn.close()
 
 
+time.sleep(2)
 start_new_thread(main_reading, ("start",))
-print("Main thread started.")
+print("Main thread started.\nGetting things ready.")
 time.sleep(1)
 
 while True:
